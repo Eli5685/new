@@ -109,7 +109,7 @@ function SuccessPage({ session }) {
     }
 
     const handleBackToBot = () => {
-        window.location.href = 'https://t.me/tg_habits_bot'
+        window.location.href = 'https://t.me/tg_habits_bot?start=login_success'
     }
 
     if (!user) {
