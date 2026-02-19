@@ -72,12 +72,18 @@ function SuccessPage({ session }) {
                 .neq('id', currentUser.id)
 
             // 2. Link to current user (Upsert/Update)
-            const { error } = await supabase
+            const { error, count } = await supabase
                 .from('profiles')
-                .update({ telegram_chat_id: tgChatId })
+                .update({ telegram_chat_id: tgChatId }, { count: 'exact' })
                 .eq('id', currentUser.id)
+                .select()
 
             if (error) throw error
+
+            // Checks for silent RLS failure
+            if (count === 0) {
+                throw new Error('Не удалось обновить профиль. Возможно, проблема с правами (RLS) в базе данных.')
+            }
 
             // 3. Notify bot
             await notifyBot()
