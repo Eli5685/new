@@ -22,9 +22,10 @@ function AuthPage({ session }) {
 
     useEffect(() => {
         if (session) {
-            navigate('/success')
+            const tg = searchParams.get('tg')
+            navigate(tg ? `/success?tg=${tg}` : '/success')
         }
-    }, [session, navigate])
+    }, [session, navigate, searchParams])
 
     useEffect(() => {
         // Не рендерим Turnstile если нет tg параметра
@@ -109,29 +110,18 @@ function AuthPage({ session }) {
 
                 <div className="auth-card">
                     <div className="auth-logo">
-                        <div className="auth-logo-icon auth-logo-icon-warn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <div className="auth-logo-icon" style={{ borderColor: '#facc15', color: '#facc15' }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                                <line x1="12" y1="9" x2="12" y2="13" />
-                                <line x1="12" y1="17" x2="12.01" y2="17" />
                             </svg>
                         </div>
-                        <h1>Вход через бота</h1>
-                        <p className="auth-subtitle">
-                            Для регистрации используйте кнопку в Telegram-боте
-                        </p>
+                        <h1>Войдите через бота</h1>
+                        <p className="auth-subtitle">Вернитесь в Telegram и нажмите кнопку там</p>
                     </div>
 
-                    <a href="https://t.me/tg_habits_bot" className="google-btn" style={{ textDecoration: 'none' }}>
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="google-icon" style={{ width: 22, height: 22 }}>
-                            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
-                        </svg>
-                        <span>Открыть бота @tg_habits_bot</span>
+                    <a href="https://t.me/tg_habits_bot" className="google-btn" style={{ background: '#24A1DE', color: 'white' }}>
+                        <span>Открыть @tg_habits_bot</span>
                     </a>
-
-                    <p className="auth-footer">
-                        Нажмите /start в боте, затем кнопку «Войти через Google»
-                    </p>
                 </div>
             </div>
         )
@@ -147,14 +137,8 @@ function AuthPage({ session }) {
 
             <div className="auth-card">
                 <div className="auth-logo">
-                    <div className="auth-logo-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                            <polyline points="22 4 12 14.01 9 11.01" />
-                        </svg>
-                    </div>
                     <h1>Трекер привычек</h1>
-                    <p className="auth-subtitle">Формируйте полезные привычки каждый день</p>
+                    <p className="auth-subtitle">Личный кабинет</p>
                 </div>
 
                 <div className="turnstile-wrapper">
@@ -190,8 +174,8 @@ function AuthPage({ session }) {
                     </div>
                 )}
 
-                <p className="auth-footer">
-                    Нажимая «Войти», вы соглашаетесь с условиями использования
+                <p className="auth-footer" style={{ opacity: 0.5 }}>
+                    Secure authentication via Google
                 </p>
             </div>
         </div>
