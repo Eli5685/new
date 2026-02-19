@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabase'
 
@@ -7,104 +7,114 @@ function SuccessPage({ session }) {
     const [searchParams] = useSearchParams()
     const [user, setUser] = useState(null)
     const [countdown, setCountdown] = useState(5)
-    const [linkStatus, setLinkStatus] = useState(null) // 'linking' | 'linked' | 'error'
+    // 'linking' | 'linked' | 'error' | 'already_linked'
+    const [linkStatus, setLinkStatus] = useState(null)
+    const isLinkingRef = useRef(false) // Guard against double-firing
 
     useEffect(() => {
+        // 1. Capture tg param immediately
         const tgChatId = searchParams.get('tg')
         if (tgChatId) {
             localStorage.setItem('tg_chat_id', tgChatId)
         }
 
+        // 2. Handle session
         if (!session) {
             supabase.auth.getSession().then(({ data: { session: s } }) => {
                 if (s) {
                     setUser(s.user)
-                    linkTelegram(s.user.id)
+                    checkAndLink(s.user)
                 } else {
                     navigate('/')
                 }
             })
         } else {
             setUser(session.user)
-            linkTelegram(session.user.id)
+            checkAndLink(session.user)
         }
     }, [session, navigate, searchParams])
 
-    // Привязка Telegram chat_id к профилю
-    const linkTelegram = async (userId) => {
-        let tgChatId = searchParams.get('tg') || localStorage.getItem('tg_chat_id')
-        if (!tgChatId) return
+    const checkAndLink = async (currentUser) => {
+        const tgChatId = searchParams.get('tg') || localStorage.getItem('tg_chat_id')
+
+        // If we don't have a chat_id to link, just show "Done"
+        if (!tgChatId) {
+            setLinkStatus('linked')
+            return
+        }
+
+        // Use ref to prevent duplicate calls
+        if (isLinkingRef.current) return
+        isLinkingRef.current = true
 
         setLinkStatus('linking')
 
+        // Helper to notify bot
+        const notifyBot = async () => {
+            await supabase.functions.invoke('notify-auth', {
+                body: {
+                    chat_id: tgChatId,
+                    name: currentUser.user_metadata?.full_name || 'Друг'
+                }
+            })
+        }
+
         try {
-            // Сначала отвязываем chat_id от любого другого профиля (смена аккаунта)
+            // Check if already linked to this specific chat_id
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('telegram_chat_id')
+                .eq('id', currentUser.id)
+                .single()
+
+            if (profile && profile.telegram_chat_id === tgChatId) {
+                // Already linked correctly
+                // IMPORTANT: Notify bot anyway, because user might have cleared chat history
+                await notifyBot()
+
+                setLinkStatus('linked')
+                localStorage.removeItem('tg_chat_id')
+                return
+            }
+
+            // Not linked or linked to different chat_id -> Perform linking
+
+            // 1. Unlink chat_id from others
             await supabase
                 .from('profiles')
                 .update({ telegram_chat_id: null })
                 .eq('telegram_chat_id', tgChatId)
-                .neq('id', userId)
+                .neq('id', currentUser.id)
 
-            // Привязываем chat_id к текущему профилю
-            const { error, count } = await supabase
+            // 2. Link to current user
+            const { error } = await supabase
                 .from('profiles')
-                .update({ telegram_chat_id: tgChatId }, { count: 'exact' })
-                .eq('id', userId)
-                .select() // Need to select to get count or data
+                .update({ telegram_chat_id: tgChatId })
+                .eq('id', currentUser.id)
 
-            if (error || (count === 0 && !error)) {
-                console.error('Link error or no profile:', error)
-                if (count === 0) alert("Ошибка: Профиль пользователя не найден. Попробуйте перезайти.")
-                setLinkStatus('error')
-            } else {
-                setLinkStatus('linked')
-                localStorage.removeItem('tg_chat_id')
+            if (error) throw error
 
-                // Отправляем приветственное сообщение в Telegram
-                try {
-                    await supabase.functions.invoke('notify-auth', {
-                        body: { chat_id: tgChatId, name: user.user_metadata?.full_name || 'Друг' }
-                    })
-                } catch (e) {
-                    console.error('Notify error:', e)
-                }
-            }
+            // 3. Notify bot
+            await notifyBot()
+
+            setLinkStatus('linked')
+            localStorage.removeItem('tg_chat_id')
+
         } catch (err) {
             console.error('Link error:', err)
             setLinkStatus('error')
+        } finally {
+            isLinkingRef.current = false
         }
     }
-
-    useEffect(() => {
-        if (!user) return
-
-        const timer = setInterval(() => {
-            setCountdown(prev => {
-                if (prev <= 1) {
-                    clearInterval(timer)
-                    return 0
-                }
-                return prev - 1
-            })
-        }, 1000)
-
-        return () => clearInterval(timer)
-    }, [user])
 
     const handleBackToBot = () => {
         window.location.href = 'https://t.me/tg_habits_bot'
     }
 
     if (!user) {
-        return (
-            <div className="loading-screen">
-                <div className="spinner"></div>
-            </div>
-        )
+        return <div className="loading-screen"><div className="spinner"></div></div>
     }
-
-    const displayName = user.user_metadata?.full_name || user.email
-    const avatarUrl = user.user_metadata?.avatar_url
 
     return (
         <div className="auth-container">
@@ -114,36 +124,36 @@ function SuccessPage({ session }) {
             </div>
 
             <div className="auth-card success-card">
-                <h1 className="success-title">Готово!</h1>
-
-                {avatarUrl && (
-                    <div className="success-avatar">
-                        <img src={avatarUrl} alt={displayName} referrerPolicy="no-referrer" />
+                {linkStatus === 'linking' ? (
+                    <div className="spinner" style={{ margin: '0 auto 20px' }}></div>
+                ) : (
+                    <div className="success-icon-wrapper">
+                        {linkStatus === 'error' ? (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        ) : (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        )}
                     </div>
                 )}
 
-                <p className="success-name">{displayName}</p>
+                <h1 className="success-title">
+                    {linkStatus === 'linking' && 'Подключение...'}
+                    {linkStatus === 'linked' && 'Готово!'}
+                    {linkStatus === 'error' && 'Ошибка'}
+                </h1>
+
                 <p className="success-subtitle">
-                    {linkStatus === 'linking' && '⏳ Привязка...'}
-                    {linkStatus === 'linked' && 'Аккаунт привязан'}
-                    {linkStatus === 'error' && 'Ошибка привязки'}
-                    {!linkStatus && 'Вход выполнен'}
+                    {linkStatus === 'linked' && 'Теперь можно закрыть это окно'}
+                    {linkStatus === 'error' && 'Не удалось связать аккаунты'}
                 </p>
 
-                <div className="success-info">
-                    Вернитесь в Telegram, чтобы продолжить. Если привязка не произошла, попробуйте нажать кнопку ещё раз.
-                </div>
-
                 <button className="bot-btn" onClick={handleBackToBot}>
-                    <span>Открыть Telegram</span>
-                    {countdown > 0 && <span className="countdown">({countdown})</span>}
-                </button>
-
-                <button className="logout-btn" onClick={async () => {
-                    await supabase.auth.signOut()
-                    navigate('/')
-                }}>
-                    Выйти из аккаунта
+                    Открыть Telegram
                 </button>
             </div>
         </div>
