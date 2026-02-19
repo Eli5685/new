@@ -6,10 +6,10 @@ function SuccessPage({ session }) {
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
     const [user, setUser] = useState(null)
-    const [countdown, setCountdown] = useState(5)
     // 'linking' | 'linked' | 'error' | 'already_linked'
     const [linkStatus, setLinkStatus] = useState(null)
     const isLinkingRef = useRef(false) // Guard against double-firing
+    const [errorMessage, setErrorMessage] = useState(null)
 
     useEffect(() => {
         // 1. Capture tg param immediately
@@ -48,6 +48,7 @@ function SuccessPage({ session }) {
         isLinkingRef.current = true
 
         setLinkStatus('linking')
+        setErrorMessage(null)
 
         // Helper to notify bot
         const notifyBot = async () => {
@@ -60,33 +61,17 @@ function SuccessPage({ session }) {
         }
 
         try {
-            // Check if already linked to this specific chat_id
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('telegram_chat_id')
-                .eq('id', currentUser.id)
-                .single()
+            // FORCE UPDATE: Always update the DB, do not trust local state.
+            // If the user came with ?tg=..., they WANT to link this account.
 
-            if (profile && profile.telegram_chat_id === tgChatId) {
-                // Already linked correctly
-                // IMPORTANT: Notify bot anyway, because user might have cleared chat history
-                await notifyBot()
-
-                setLinkStatus('linked')
-                localStorage.removeItem('tg_chat_id')
-                return
-            }
-
-            // Not linked or linked to different chat_id -> Perform linking
-
-            // 1. Unlink chat_id from others
+            // 1. Unlink chat_id from potential other users (steal mechanism)
             await supabase
                 .from('profiles')
                 .update({ telegram_chat_id: null })
                 .eq('telegram_chat_id', tgChatId)
                 .neq('id', currentUser.id)
 
-            // 2. Link to current user
+            // 2. Link to current user (Upsert/Update)
             const { error } = await supabase
                 .from('profiles')
                 .update({ telegram_chat_id: tgChatId })
@@ -103,6 +88,7 @@ function SuccessPage({ session }) {
         } catch (err) {
             console.error('Link error:', err)
             setLinkStatus('error')
+            setErrorMessage(err.message || 'Не удалось связать аккаунты')
         } finally {
             isLinkingRef.current = false
         }
@@ -118,43 +104,46 @@ function SuccessPage({ session }) {
 
     return (
         <div className="auth-container">
-            <div className="auth-bg">
-                <div className="auth-orb auth-orb-1"></div>
-                <div className="auth-orb auth-orb-2"></div>
-            </div>
+            <div className="auth-bg"></div>
 
-            <div className="auth-card success-card">
+            <div className="auth-card">
                 {linkStatus === 'linking' ? (
-                    <div className="spinner" style={{ margin: '0 auto 20px' }}></div>
+                    <div className="spinner" style={{ margin: '0 auto 40px' }}></div>
                 ) : (
                     <div className="success-icon-wrapper">
                         {linkStatus === 'error' ? (
-                            <svg viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="18" y1="6" x2="6" y2="18"></line>
-                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#ff6b6b">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="15" y1="9" x2="9" y2="15"></line>
+                                <line x1="9" y1="9" x2="15" y2="15"></line>
                             </svg>
                         ) : (
-                            <svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#34A853">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                         )}
                     </div>
                 )}
 
-                <h1 className="success-title">
-                    {linkStatus === 'linking' && 'Подключение...'}
+                <h1>
+                    {linkStatus === 'linking' && 'Подключение'}
                     {linkStatus === 'linked' && 'Готово!'}
                     {linkStatus === 'error' && 'Ошибка'}
                 </h1>
 
                 <p className="success-subtitle">
-                    {linkStatus === 'linked' && 'Теперь можно закрыть это окно'}
-                    {linkStatus === 'error' && 'Не удалось связать аккаунты'}
+                    {linkStatus === 'linked' && 'Ваш аккаунт успешно привязан. Теперь вы можете использовать все функции бота.'}
+                    {linkStatus === 'error' && (errorMessage || 'Не удалось привязать аккаунт. Попробуйте еще раз.')}
+                    {linkStatus === 'linking' && 'Синхронизируем ваш профиль...'}
                 </p>
 
                 <button className="bot-btn" onClick={handleBackToBot}>
-                    Открыть Telegram
+                    Вернуться в Telegram
                 </button>
+
+                <p className="auth-footer">
+                    Authorized Session
+                </p>
             </div>
         </div>
     )

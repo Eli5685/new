@@ -90,19 +90,17 @@ function AuthPage({ session }) {
             <div className="auth-container">
                 <div className="auth-bg"></div>
                 <div className="auth-card">
-                    <div className="auth-logo">
-                        <div className="auth-logo-icon" style={{ borderColor: '#333', color: '#fff' }}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="12" y1="8" x2="12" y2="12"></line>
-                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                            </svg>
-                        </div>
-                        <h1>Ошибка входа</h1>
-                        <p className="auth-subtitle">Откройте эту страницу через бота</p>
+                    <div className="auth-logo-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
                     </div>
+                    <h1>Ошибка</h1>
+                    <p className="auth-subtitle">Пожалуйста, откройте это приложение через Telegram бота</p>
 
-                    <a href="https://t.me/tg_habits_bot" className="google-btn" style={{ background: '#222', borderColor: '#333' }}>
+                    <a href="https://t.me/tg_habits_bot" className="google-btn">
                         Открыть Telegram
                     </a>
                 </div>
@@ -115,22 +113,20 @@ function AuthPage({ session }) {
             <div className="auth-bg"></div>
 
             <div className="auth-card">
-                <div className="auth-logo">
-                    <div className="auth-logo-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                            <polyline points="10 17 15 12 10 7" />
-                            <line x1="15" y1="12" x2="3" y2="12" />
-                        </svg>
-                    </div>
-                    <h1>Войти</h1>
-                    <p className="auth-subtitle">Синхронизация с Telegram</p>
+                <div className="auth-logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                        <polyline points="10 17 15 12 10 7" />
+                        <line x1="15" y1="12" x2="3" y2="12" />
+                    </svg>
                 </div>
+                <h1>Войти</h1>
+                <p className="auth-subtitle">Синхронизируйте аккаунт с ботом в один клик</p>
 
                 <div className="turnstile-wrapper" ref={turnstileRef}></div>
 
                 {error && (
-                    <div className="auth-error" style={{ color: '#ff6b6b', marginBottom: '16px', fontSize: '14px' }}>
+                    <div className="auth-error" style={{ color: '#ff6b6b', marginBottom: '24px', fontSize: '14px', textAlign: 'center', fontWeight: '500' }}>
                         {error}
                     </div>
                 )}
@@ -141,7 +137,7 @@ function AuthPage({ session }) {
                     disabled={!turnstileToken || isLoading}
                 >
                     {isLoading ? (
-                        <div className="spinner" style={{ width: '20px', height: '20px', borderTopColor: '#fff', borderRightColor: 'rgba(255,255,255,0.2)', borderBottomColor: 'rgba(255,255,255,0.2)', borderLeftColor: 'rgba(255,255,255,0.2)' }}></div>
+                        <div className="spinner"></div>
                     ) : (
                         <>
                             <svg className="google-icon" viewBox="0 0 24 24">
@@ -162,13 +158,13 @@ function AuthPage({ session }) {
                                     fill="#EA4335"
                                 />
                             </svg>
-                            <span>Войти через Google</span>
+                            <span>Продолжить через Google</span>
                         </>
                     )}
                 </button>
 
-                <p className="auth-footer" style={{ opacity: 0.4 }}>
-                    Secure authentication
+                <p className="auth-footer">
+                    Secure Cloud Encryption
                 </p>
             </div>
         </div>
