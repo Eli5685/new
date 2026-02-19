@@ -20,11 +20,19 @@ function AuthPage({ session }) {
     }, [tgChatId])
 
     useEffect(() => {
-        if (session) {
-            const tg = searchParams.get('tg')
-            navigate(tg ? `/success?tg=${tg}` : '/success')
+        // Если пришли от бота (есть tgChatId) -> разлогиниваемся, чтобы войти "начисто"
+        // Это решает проблему "закэшированной сессии", которая не обновляет базу
+        if (session && tgChatId) {
+            const handleSignOut = async () => {
+                await supabase.auth.signOut()
+            }
+            handleSignOut()
         }
-    }, [session, navigate, searchParams])
+        // Если просто открыли страницу (без tg) и уже залогинены -> перекидываем в успех
+        else if (session && !tgChatId) {
+            navigate('/success')
+        }
+    }, [session, navigate, tgChatId])
 
     useEffect(() => {
         if (!tgChatId) return
